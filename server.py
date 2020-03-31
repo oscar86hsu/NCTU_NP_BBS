@@ -39,8 +39,6 @@ class BBS():
                         self.unknown()
             except Exit:
                 raise Exit()
-            except Exception as e:
-                print(e)
 
     def register(self, client_message):
         if len(client_message) != 3:
@@ -125,6 +123,7 @@ class BBS():
         if len(client_message) > 1:
             message = "Usage: exit\n"
             self.conn.sendall(message.encode())
+        print("Connection Closed")
         raise Exit()
 
     def echo(self, client_message):
@@ -141,9 +140,7 @@ class BBS():
         message = "Unknown Command\n"
         self.conn.sendall(message.encode())
 
-    def __del__(self):
-        print("Connection Closed")
-        self.conn.close()
+
 
 db = sqlite3.connect("bbs.db")
 init_sql = '''CREATE TABLE IF NOT EXISTS users(UID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -162,7 +159,7 @@ else:
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((HOST, PORT))
 server.listen(10)
-print('Server Started')
+print('Server Started at PORT', str(PORT))
 
 while True:
     try:
@@ -170,3 +167,6 @@ while True:
         bbs.wait()
     except Exit:
         del bbs
+    except KeyboardInterrupt:
+        print("Bye")
+        exit(0)
