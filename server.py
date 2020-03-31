@@ -2,17 +2,19 @@
 import socket
 import sys
 import sqlite3
+import _thread as thread
 
 class Exit(Exception):
     pass
 class BBS():
-    def __init__(self, server):
+    def __init__(self, conn, addr):
         super().__init__()
-        self.conn, self.addr = server.accept()
+        self.conn = conn
+        self.addr = addr
         print("New connection.")
         welcome_message = "\n********************************\n** Welcome to the BBS server. **\n********************************\n"
         self.conn.sendall(welcome_message.encode())
-        self.login = False
+        self.is_login = False
 
     def wait(self):
         while True:
@@ -47,14 +49,14 @@ class BBS():
             return
 
         db = sqlite3.connect("bbs.db")
-        sql = "SELECT UID FROM users WHERE username={}".format(client_message[0])
+        sql = "SELECT UID FROM users WHERE username='{}'".format(client_message[0])
         cursor=db.execute(sql)
         if len(cursor.fetchall()) > 0:
             message = "Username is already used.\n"
             self.conn.sendall(message.encode())
             return
 
-        sql = "INSERT INTO users(username, email, password) VALUES({}, {}, {})".format(client_message[0], client_message[1], client_message[2])
+        sql = "INSERT INTO users(username, email, password) VALUES('{}', '{}', '{}')".format(client_message[0], client_message[1], client_message[2])
         db.execute(sql)
         message = "Register successfully.\n"
         self.conn.sendall(message.encode())
@@ -66,13 +68,13 @@ class BBS():
             self.conn.sendall(message.encode())
             return
         
-        if self.login:
+        if self.is_login:
             message = "Please logout first.\n"
             self.conn.sendall(message.encode())
             return
 
         db = sqlite3.connect("bbs.db")
-        sql = "SELECT password FROM users WHERE username={}".format(client_message[0])
+        sql = "SELECT password FROM users WHERE username='{}'".format(client_message[0])
         cursor = db.execute(sql)
         data = cursor.fetchone()
         if (data == None) or (data[0] != client_message[1]):
@@ -82,7 +84,7 @@ class BBS():
 
         message = "Welcome, {}.\n".format(client_message[0])
         self.conn.sendall(message.encode())
-        self.login = True
+        self.is_login = True
         self.username = client_message[0]
         return
         
@@ -92,13 +94,13 @@ class BBS():
             self.conn.sendall(message.encode())
             return
 
-        if not self.login:
+        if not self.is_login:
             message = "Please login first.\n"
             self.conn.sendall(message.encode())
             return
 
         message = "Bye, {}.".format(self.username)
-        self.login = False
+        self.is_login = False
         del self.username
         self.conn.sendall(message.encode())
         return
@@ -110,7 +112,7 @@ class BBS():
             self.conn.sendall(message.encode())
             return
 
-        if not self.login:
+        if not self.is_login:
             message = "Please login first.\n"
             self.conn.sendall(message.encode())
             return
@@ -140,7 +142,17 @@ class BBS():
         message = "Unknown Command\n"
         self.conn.sendall(message.encode())
 
+    def __del__(self):
+        self.conn.close()
 
+
+def connection_handler(conn, addr):
+    try:
+        bbs = BBS(conn, addr)
+        bbs.wait()
+    except Exit:
+        del bbs
+        exit(0)
 
 db = sqlite3.connect("bbs.db")
 init_sql = '''CREATE TABLE IF NOT EXISTS users(UID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -156,17 +168,16 @@ if len(sys.argv) > 1:
 else:
     PORT = 3000
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind((HOST, PORT))
-server.listen(10)
+socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+socket.bind((HOST, PORT))
+socket.listen(10)
 print('Server Started at PORT', str(PORT))
 
 while True:
     try:
-        bbs = BBS(server)
-        bbs.wait()
-    except Exit:
-        del bbs
+        conn, addr = socket.accept()
+        thread.start_new_thread(connection_handler,(conn,addr))
     except KeyboardInterrupt:
         print("Bye")
+        socket.close()
         exit(0)
