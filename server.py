@@ -6,46 +6,110 @@ import _thread as thread
 
 class Exit(Exception):
     pass
-class BBS():
+
+class Client:
     def __init__(self, conn, addr):
         super().__init__()
+        self.is_login = False
+        self.username = None
         self.conn = conn
         self.addr = addr
-        print("New connection.")
-        welcome_message = "\n********************************\n** Welcome to the BBS server. **\n********************************\n"
-        self.conn.sendall(welcome_message.encode())
-        self.is_login = False
 
-    def wait(self):
+    def set_login_stat(self, value):
+        self.is_login = value
+
+    def set_username(self, value):
+        self.username = value
+
+    def get_login_stat(self):
+        return self.is_login
+
+    def get_username(self):
+        return self.username
+
+
+class BBS_Server:
+    def __init__(self, host, port):
+        super().__init__()
+        self.host = host
+        self.port = port
+        self.init_db()
+
+    def init_db(self):
+        db = sqlite3.connect("bbs.db")
+        init_sql = '''CREATE TABLE IF NOT EXISTS users(UID INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL,
+        password TEXT NOT NULL);
+        '''
+        cursor=db.execute(init_sql)
+
+    def start_listening(self):
+        self.sock = socket.socket()
+        self.sock.bind((self.host, self.port))
+        self.sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+        self.sock.listen(50)
+        print("Server starts at port ", self.port)
+
         while True:
             try:
-                self.conn.sendall('% '.encode())
-                raw_client_message = self.conn.recv(1024)
+                conn, addr = self.sock.accept()
+                client = Client(conn, addr)
+                thread.start_new_thread(self.connection_handler,(client,))
+            except KeyboardInterrupt:
+                print("Bye")
+                self.sock.close()
+                exit(0)
+
+    def terminate(self):
+        self.sock.close()
+        exit(0)
+
+    def connection_handler(self, client):
+        print("New connection.")
+        self.send_welcome_message(client)
+        while True:
+            try:
+                self.wait(client)
+            except Exit:
+                del client
+                exit(0)
+
+    def send_welcome_message(self, client):
+        welcome_message = "\n********************************\n** Welcome to the BBS server. **\n********************************\n"
+        client.conn.sendall(welcome_message.encode())
+        client.set_login_stat(False)
+
+    def wait(self, client):
+        while True:
+            try:
+                client.conn.sendall('% '.encode())
+                raw_client_message = client.conn.recv(1024)
                 if raw_client_message == b'\xff\xf4\xff\xfd\x06':
-                    self.exit([])
+                    self.exit(client, [])
                 else:
                     client_message = str(raw_client_message, encoding='utf-8').replace("\r\n", "").split(" ")
                     if client_message[0] == "register":
-                        self.register(client_message[1:])
+                        self.register(client, client_message[1:])
                     elif client_message[0] == "login":
-                        self.login(client_message[1:])
+                        self.login(client, client_message[1:])
                     elif client_message[0] == "logout":
-                        self.logout(client_message[1:])
+                        self.logout(client, client_message[1:])
                     elif client_message[0] == "whoami":
-                        self.whoami(client_message[1:])
+                        self.whoami(client, client_message[1:])
                     elif client_message[0] == "exit":
-                        self.exit(client_message[1:])
+                        self.exit(client, client_message[1:])
                     elif client_message[0] == "echo":
-                        self.echo(client_message[1:])
+                        self.echo(client, client_message[1:])
                     else:
-                        self.unknown()
+                        self.unknown(client)
             except Exit:
                 raise Exit()
 
-    def register(self, client_message):
+    def register(self, client, client_message):
         if len(client_message) != 3:
             message = "Usage: register <username> <email> <password>\n"
-            self.conn.sendall(message.encode())
+            client.conn.sendall(message.encode())
             return
 
         db = sqlite3.connect("bbs.db")
@@ -53,24 +117,24 @@ class BBS():
         cursor=db.execute(sql)
         if len(cursor.fetchall()) > 0:
             message = "Username is already used.\n"
-            self.conn.sendall(message.encode())
+            client.conn.sendall(message.encode())
             return
 
         sql = "INSERT INTO users(username, email, password) VALUES('{}', '{}', '{}')".format(client_message[0], client_message[1], client_message[2])
         db.execute(sql)
         message = "Register successfully.\n"
-        self.conn.sendall(message.encode())
+        client.conn.sendall(message.encode())
         return
 
-    def login(self, client_message):
+    def login(self, client, client_message):
         if len(client_message) != 2:
             message = "Usage: login <username> <password>\n"
-            self.conn.sendall(message.encode())
+            client.conn.sendall(message.encode())
             return
         
-        if self.is_login:
+        if client.get_login_stat():
             message = "Please logout first.\n"
-            self.conn.sendall(message.encode())
+            client.conn.sendall(message.encode())
             return
 
         db = sqlite3.connect("bbs.db")
@@ -79,56 +143,56 @@ class BBS():
         data = cursor.fetchone()
         if (data == None) or (data[0] != client_message[1]):
             message = "Login failed.\n"
-            self.conn.sendall(message.encode())
+            client.conn.sendall(message.encode())
             return
 
         message = "Welcome, {}.\n".format(client_message[0])
-        self.conn.sendall(message.encode())
-        self.is_login = True
-        self.username = client_message[0]
+        client.conn.sendall(message.encode())
+        client.set_login_stat(True)
+        client.set_username(client_message[0])
         return
         
-    def logout(self, client_message):
+    def logout(self, client, client_message):
         if len(client_message) > 1:
             message = "Usage: logout\n"
-            self.conn.sendall(message.encode())
+            client.sendall(message.encode())
             return
 
-        if not self.is_login:
+        if not client.get_login_stat():
             message = "Please login first.\n"
-            self.conn.sendall(message.encode())
+            client.conn.sendall(message.encode())
             return
 
-        message = "Bye, {}.".format(self.username)
-        self.is_login = False
-        del self.username
-        self.conn.sendall(message.encode())
+        message = "Bye, {}.".format(client.get_username())
+        client.set_login_stat(False)
+        client.conn.sendall(message.encode())
         return
         
     
-    def whoami(self, client_message):
+    def whoami(self, client, client_message):
         if len(client_message) < 1:
             message = "Usage: echo <message>\n"
-            self.conn.sendall(message.encode())
+            client.conn.sendall(message.encode())
             return
 
-        if not self.is_login:
+        if not client.get_login_stat():
             message = "Please login first.\n"
-            self.conn.sendall(message.encode())
+            client.conn.sendall(message.encode())
             return
 
         message = self.username
-        self.conn.sendall(message.encode())
+        client.conn.sendall(message.encode())
         return
 
-    def exit(self, client_message):
+    def exit(self, client, client_message):
         if len(client_message) > 1:
             message = "Usage: exit\n"
-            self.conn.sendall(message.encode())
+            client.conn.sendall(message.encode())
+        client.conn.close()
         print("Connection Closed")
         raise Exit()
 
-    def echo(self, client_message):
+    def echo(self, client, client_message):
         if len(client_message) < 1:
             message = "Usage: echo <message>\n"
         else:
@@ -136,48 +200,18 @@ class BBS():
             for m in client_message:
                 message += m + " "
             message = message[:-1] + "\n"
-        self.conn.sendall(message.encode())
+        client.conn.sendall(message.encode())
     
-    def unknown(self):
+    def unknown(self, client):
         message = "Unknown Command\n"
-        self.conn.sendall(message.encode())
-
-    def __del__(self):
-        self.conn.close()
+        client.conn.sendall(message.encode())
 
 
-def connection_handler(conn, addr):
-    try:
-        bbs = BBS(conn, addr)
-        bbs.wait()
-    except Exit:
-        del bbs
-        exit(0)
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        PORT = int(sys.argv[1])
+    else:
+        PORT = 3000
 
-db = sqlite3.connect("bbs.db")
-init_sql = '''CREATE TABLE IF NOT EXISTS users(UID INTEGER PRIMARY KEY AUTOINCREMENT,
-username TEXT NOT NULL UNIQUE,
-email TEXT NOT NULL,
-password TEXT NOT NULL);
-'''
-cursor=db.execute(init_sql)
-
-HOST = ''
-if len(sys.argv) > 1:
-    PORT = int(sys.argv[1])
-else:
-    PORT = 3000
-
-socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-socket.bind((HOST, PORT))
-socket.listen(10)
-print('Server Started at PORT', str(PORT))
-
-while True:
-    try:
-        conn, addr = socket.accept()
-        thread.start_new_thread(connection_handler,(conn,addr))
-    except KeyboardInterrupt:
-        print("Bye")
-        socket.close()
-        exit(0)
+    server = BBS_Server('', PORT)
+    server.start_listening()
