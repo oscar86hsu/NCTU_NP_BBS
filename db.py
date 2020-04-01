@@ -26,6 +26,10 @@ class Database:
         sql = "INSERT INTO users(username, email, password) VALUES('{}', '{}', '{}')".format(username, email, password)
         self.execute(sql)
 
+    def delete_user(self, username):
+        sql = "DELETE FROM users WHERE username='{}'".format(username)
+        self.execute(sql)
+
     def execute(self, sql):
         result = self.cur.execute(sql)
         self.conn.commit()
