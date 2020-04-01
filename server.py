@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import socket
 import sys
-import sqlite3
 import threading
+from db import Database
 
 class Exit(Exception):
     pass
 
-class Client:
+class Connection:
     def __init__(self, conn, addr):
         super().__init__()
         self.is_login = False
@@ -33,16 +33,8 @@ class BBS_Server:
         super().__init__()
         self.host = host
         self.port = port
-        self.init_db()
-
-    def init_db(self):
-        db = sqlite3.connect("bbs.db")
-        init_sql = '''CREATE TABLE IF NOT EXISTS users(UID INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        email TEXT NOT NULL,
-        password TEXT NOT NULL);
-        '''
-        cursor=db.execute(init_sql)
+        db = Database("bbs.db")
+        db.init_db()
 
     def start_listening(self):
         self.sock = socket.socket()
@@ -54,7 +46,7 @@ class BBS_Server:
         while True:
             try:
                 conn, addr = self.sock.accept()
-                client = Client(conn, addr)
+                client = Connection(conn, addr)
                 t = threading.Thread(target=self.connection_handler, args=(client,), daemon=True)
                 t.start()
             except KeyboardInterrupt:
@@ -113,16 +105,14 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        db = sqlite3.connect("bbs.db")
-        sql = "SELECT UID FROM users WHERE username='{}'".format(client_message[0])
-        cursor=db.execute(sql)
-        if len(cursor.fetchall()) > 0:
+        db = Database("bbs.db")
+        username, password = db.get_user(client_message[0])
+        if  username != None:
             message = "Username is already used.\n"
             client.conn.sendall(message.encode())
             return
 
-        sql = "INSERT INTO users(username, email, password) VALUES('{}', '{}', '{}')".format(client_message[0], client_message[1], client_message[2])
-        db.execute(sql)
+        db.create_user(client_message[0], client_message[1], client_message[2])
         message = "Register successfully.\n"
         client.conn.sendall(message.encode())
         return
@@ -138,11 +128,10 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        db = sqlite3.connect("bbs.db")
-        sql = "SELECT password FROM users WHERE username='{}'".format(client_message[0])
-        cursor = db.execute(sql)
-        data = cursor.fetchone()
-        if (data == None) or (data[0] != client_message[1]):
+        db = Database("bbs.db")
+        username, password = db.get_user(client_message[0])
+
+        if (username == None) or (password != client_message[1]):
             message = "Login failed.\n"
             client.conn.sendall(message.encode())
             return
@@ -164,15 +153,15 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        message = "Bye, {}.".format(client.get_username())
+        message = "Bye, {}.\n".format(client.get_username())
         client.set_login_stat(False)
         client.conn.sendall(message.encode())
         return
         
     
     def whoami(self, client, client_message):
-        if len(client_message) < 1:
-            message = "Usage: echo <message>\n"
+        if len(client_message) > 1:
+            message = "Usage: whoami\n"
             client.conn.sendall(message.encode())
             return
 
@@ -181,7 +170,7 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        message = self.username
+        message = client.username + "\n"
         client.conn.sendall(message.encode())
         return
 
@@ -216,3 +205,4 @@ if __name__ == "__main__":
 
     server = BBS_Server('', PORT)
     server.start_listening()
+    del server
