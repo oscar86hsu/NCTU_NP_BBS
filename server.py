@@ -2,7 +2,7 @@
 import socket
 import sys
 import sqlite3
-import _thread as thread
+import threading
 
 class Exit(Exception):
     pass
@@ -49,21 +49,18 @@ class BBS_Server:
         self.sock.bind((self.host, self.port))
         self.sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
         self.sock.listen(50)
-        print("Server starts at port ", self.port)
+        print("Server starts at port", self.port)
 
         while True:
             try:
                 conn, addr = self.sock.accept()
                 client = Client(conn, addr)
-                thread.start_new_thread(self.connection_handler,(client,))
+                t = threading.Thread(target=self.connection_handler, args=(client,), daemon=True)
+                t.start()
             except KeyboardInterrupt:
                 print("Bye")
                 self.sock.close()
                 exit(0)
-
-    def terminate(self):
-        self.sock.close()
-        exit(0)
 
     def connection_handler(self, client):
         print("New connection.")
@@ -73,6 +70,10 @@ class BBS_Server:
                 self.wait(client)
             except Exit:
                 del client
+                exit(0)
+            except BrokenPipeError:
+                del client
+                print("Broken Pipe.")
                 exit(0)
 
     def send_welcome_message(self, client):
