@@ -113,6 +113,7 @@ class BBS_Server:
             except Exit:
                 raise Exit()
 
+    ### LOGIN ###
     def register(self, client, client_message):
         if len(client_message) != 3:
             message = "Usage: register <username> <email> <password>\n"
@@ -192,6 +193,9 @@ class BBS_Server:
         client.conn.sendall(message.encode())
         return
 
+    ### POST ###
+
+    ### MISC ###
     def exit(self, client, client_message):
         if len(client_message) > 1:
             message = "Usage: exit\n"

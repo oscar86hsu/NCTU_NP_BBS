@@ -47,7 +47,7 @@ class Database:
         self.cur.execute(sql)
         self.conn.commit()
 
-    ### LOGIN STUFF ###
+    ### LOGIN ###
     def get_user(self, username):
         sql = "SELECT UID, password FROM user WHERE username='{}'".format(username)
         result = self.execute(sql).fetchone()
@@ -66,7 +66,7 @@ class Database:
         self.execute(sql)
         logging.info("User {} deleted.".format(username))
 
-    ### POST STUFF ###
+    ### POST ###
     def create_board(self, name, moderator):
         sql = "INSERT INTO board(name, moderator) VALUES('{}')".format(name, moderator)
         self.execute(sql)
