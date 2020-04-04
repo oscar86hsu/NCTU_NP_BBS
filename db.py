@@ -31,7 +31,8 @@ class Database:
             author INTEGER NOT NULL,
             title TEXT NOT NULL,
             date DATETIME DEFAULT current_timestamp,
-            content TEXT NOT NULL
+            content TEXT NOT NULL,
+            board INTERGER NOT NULL
         );
         '''
         self.cur.execute(sql)
@@ -68,7 +69,7 @@ class Database:
 
     ### POST ###
     def create_board(self, name, moderator):
-        sql = "INSERT INTO board(name, moderator) VALUES('{}')".format(name, moderator)
+        sql = "INSERT INTO board(name, moderator) VALUES('{}', '{}')".format(name, moderator)
         self.execute(sql)
         logging.info("Board {} created.".format(name))
 
@@ -77,28 +78,49 @@ class Database:
         self.execute(sql)
         logging.info("Post {} created.".format(title))
 
+    def is_board_exist(self, name):
+        sql = "SELECT name FROM board WHERE name='{}'".format(name)
+        if self.execute(sql).fetchone() == None:
+            return False
+        else:
+            return True
+
     def list_board(self, keyword):
-        sql = "SELECT name FROM board WHERE name LIKE %{}%".format(keyword)
+        sql = "SELECT board.UID, board.name, user.username FROM board, user WHERE user.UID=board.moderator and board.name LIKE %{}%".format(keyword)
         return self.execute(sql).fetchall()
 
     def list_all_board(self):
-        sql = "SELECT name FROM board"
+        sql = "SELECT board.UID, board.name, user.username FROM board, user WHERE user.UID=board.moderator"
         return self.execute(sql).fetchall()
 
     def list_post(self, board, keyword):
-        sql = "SELECT post.UID, post.title, user.username, post.date FROM post, user WHERE user.UID = post.author and post.title LIKE %{}%".format(keyword)
+        sql = '''
+        SELECT post.UID, post.title, user.username, post.date  
+        FROM post, user, board
+        WHERE user.UID=post.author and board.UID=post.board 
+        and board.name='{}' and post.title LIKE %{}%
+        '''.format(board, keyword)
         return self.execute(sql).fetchall()
 
     def list_all_post(self, board):
-        sql = "SELECT post.UID, post.title, user.username, post.date FROM post, user WHERE user.UID = post.author"
+        sql = '''
+        SELECT post.UID, post.title, user.username, post.date  
+        FROM post, user, board
+        WHERE user.UID=post.author and board.UID=post.board 
+        and board.name='{}'
+        '''.format(board)
         return self.execute(sql).fetchall()
 
     def read_post(self, post_id):
-        sql = "SELECT post.UID user.username, post.title, post.date, post.content FROM post, user WHERE post.UID={} and user.UID = post.author".format(post_id)
+        sql = "SELECT user.username, post.title, post.date, post.content FROM post, user WHERE post.UID={} and user.UID=post.author".format(post_id)
         post = self.execute(sql).fetchone()
-        sql = "SELECT UID, author, content FROM comment WHERE post={} ORDER BY UID".format(post_id)
+        sql = "SELECT author, content, UID FROM comment WHERE post={} ORDER BY UID".format(post_id)
         comment = self.execute(sql).fetchall()
         return post, comment
+
+    def get_post_owner(self, post_id):
+        sql = "SELECT author FROM post WHERE UID={}".format(post_id)
+        return self.execute(sql).fetchone()
 
     def delete_post(self, post_id):
         sql = "DELETE FROM post WHERE UID={}".format(post_id)

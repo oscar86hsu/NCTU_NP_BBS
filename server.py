@@ -36,6 +36,9 @@ class Connection:
     def get_username(self):
         return self.username
 
+    def get_userid(self):
+        return self.uid
+
 
 class BBS_Server:
     def __init__(self, host, port):
@@ -68,9 +71,10 @@ class BBS_Server:
         logging.info("New connection, {}.".format(client.addr))
         print("New connection.")
         self.send_welcome_message(client)
+        client.set_login_stat(False)
         while True:
             try:
-                self.wait(client)
+                self.command_handler(client)
             except Exit:
                 logging.info("Connection Closed.")
                 del client
@@ -83,10 +87,9 @@ class BBS_Server:
     def send_welcome_message(self, client):
         welcome_message = "\n********************************\n** Welcome to the BBS server. **\n********************************\n"
         client.conn.sendall(welcome_message.encode())
-        client.set_login_stat(False)
         logging.debug("Welcome message sent!")
 
-    def wait(self, client):
+    def command_handler(self, client):
         while True:
             try:
                 client.conn.sendall('% '.encode())
@@ -108,6 +111,22 @@ class BBS_Server:
                         self.exit(client, client_message[1:])
                     elif client_message[0] == "echo":
                         self.echo(client, client_message[1:])
+                    elif client_message[0] == "create-board":
+                        self.create_board(client, client_message[1:])
+                    elif client_message[0] == "create-post":
+                        self.create_post(client, client_message[1:])
+                    elif client_message[0] == "list-board":
+                        self.list_board(client, client_message[1:])
+                    elif client_message[0] == "list-post":
+                        self.list_post(client, client_message[1:])
+                    elif client_message[0] == "read":
+                        self.read(client, client_message[1:])
+                    elif client_message[0] == "delete-post":
+                        self.delete_post(client, client_message[1:])
+                    elif client_message[0] == "update-post":
+                        self.update_post(client, client_message[1:])
+                    elif client_message[0] == "comment":
+                        self.comment(client, client_message[1:])
                     else:
                         self.unknown(client)
             except Exit:
@@ -194,6 +213,253 @@ class BBS_Server:
         return
 
     ### POST ###
+    def create_board(self, client, client_message):
+        if (len(client_message) < 1) or (len(client_message) > 2):
+            message = "Usage: create-board <name>\n"
+            client.conn.sendall(message.encode())
+            return
+
+        if not client.get_login_stat():
+            message = "Please login first.\n"
+            client.conn.sendall(message.encode())
+            return
+
+        db = Database("bbs.db")
+        if db.is_board_exist(client_message[0]):
+            message = "Board is already exist.\n"
+            client.conn.sendall(message.encode())
+            return
+
+        db.create_board(client_message[0], client.get_userid())
+        logging.info("Board {} created.".format(client_message[0]))
+        message = "Create board successfully.\n"
+        client.conn.sendall(message.encode())
+        return
+
+    def create_post(self, client, client_message):
+        if len(client_message) < 1:
+            message = "Usage: create-post <board-name> --title <title> --content <content>\n"
+            client.conn.sendall(message.encode())
+            return
+
+        try:
+            title_index = client_message.index("--title")
+        except ValueError:
+            message = "Usage: create-post <board-name> --title <title> --content <content>\n"
+            client.conn.sendall(message.encode())
+            return
+
+        try:
+            content_index = client_message.index("--content")
+        except ValueError:
+            message = "Usage: create-post <board-name> --title <title> --content <content>\n"
+            client.conn.sendall(message.encode())
+            return
+
+        db = Database("bbs.db")
+        if not db.is_board_exist():
+            message = "Board does not exist.\n"
+            client.conn.sendall(message.encode())
+            return
+
+        title = ""
+        content = ""
+        tmp = ""
+
+        while (tmp != "--content") and (title_index <= len(client_message)):
+            title_index += 1
+            title += client_message[title_index]
+
+        while (tmp != "--title") and (content_index <= len(client_message)):
+            content_index += 1
+            content += client_message[content_index]
+
+        db.create_post(client.get_userid(), title, content)
+        logging.info("Post {} created.".format(title))
+        message = "Create post successfully.\n"
+        client.conn.sendall(message.encode())
+
+    def list_board(self, client, client_message):
+        if len(client_message) > 2:
+            message = "Usage: list-board (##<key>)\n"
+            client.conn.sendall(message.encode())
+            return
+
+        if len(client_message) < 1:
+            db = Database("bbs.db")
+            boards = db.list_all_board()
+        elif client_message[1].startswith("##"):
+            db = Database("bbs.db")
+            boards = db.list_board(client_message[1][2:])
+        else:
+            message = "Usage: list-board (##<key>)\n"
+            client.conn.sendall(message.encode())
+            return
+        
+        if len(boards) == 0:
+            message = "There's no board yet\n"
+            client.conn.sendall(message.encode())
+            return
+
+        message = "{:10}{:15}{:15}\n".format("Index", "Name", "Moderator")
+        client.conn.sendall(message.encode())
+        for board in boards:
+            message = "{:10}{:15}{:15}\n".format(str(board[0]), board[1], board[2])
+            client.conn.sendall(message.encode())
+
+
+    def list_post(self, client, client_message):
+        if len(client_message) > 3:
+            message = "Usage: list-post <board-name> (##<key>)\n"
+            client.conn.sendall(message.encode())
+            return
+
+        db = Database("bbs.db")
+        if not db.is_board_exist(client_message[0]):
+            message = "Board does not exist.\n"
+            client.conn.sendall(message.encode())
+            return
+
+        if len(client_message) < 3:
+            db = Database("bbs.db")
+            posts = db.list_all_post(client_message[0])
+        elif client_message[2].startswith("##"):
+            db = Database("bbs.db")
+            posts = db.list_board(client_message[0], client_message[1][2:])
+        else:
+            message = "Usage: list-post <board-name> (##<key>)\n"
+            client.conn.sendall(message.encode())
+            return
+
+        if len(posts) == 0:
+            message = "There's no post yet\n"
+            client.conn.sendall(message.encode())
+            return
+
+        message = "{:8}{:12}{:12}{:12}\n".format("ID", "Title", "Author", "Date")
+        client.conn.sendall(message.encode())
+        for post in posts:
+            print(post)
+            message = "{:8}{:12}{:12}{:12}\n".format(post[0], post[1], post[2], post[3])
+            client.conn.sendall(message.encode())
+
+    def read(self, client, client_message):
+        if len(client_message) != 1:
+            message = "Usage: read <post-id>\n"
+            client.conn.sendall(message.encode())
+            return
+
+        db = Database("bbs.db")
+        post, comments = db.read_post(client_message[0])
+
+        if post == None:
+            message = "Post does not exist.\n"
+            client.conn.sendall(message.encode())
+            return
+
+        message =  "Author   : " + post[0] + "\n"
+        message += "Title    : " + post[1] + "\n"
+        message += "Date     : " + post[2] + "\n"
+        message += "--\n"
+        message += post[3].replace("<br>", "\n") + "\n"
+        message += "--\n"
+        client.conn.sendall(message.encode())
+        for comment in comments:
+            message = comment[0] + " : " + comment[1]
+            client.conn.sendall(message.encode())
+            
+        
+    def delete_post(self, client, client_message):
+        if len(client_message) != 1:
+            message = "Usage: delete-post <post-id>\n"
+            client.conn.sendall(message.encode())
+            return
+
+        if not client.get_login_stat():
+            message = "Please login first.\n"
+            client.conn.sendall(message.encode())
+            return
+
+        db = Database("bbs.db")
+        author = db.get_post_owner(client_message[0])
+        if author == None:
+            message = "Post does not exist.\n"
+            client.conn.sendall(message.encode())
+            return
+
+        if author != client.get_userid():
+            message = "You are not the post owner.\n"
+            client.conn.sendall(message.encode())
+            return
+
+        db.delete_post(client_message[0])
+
+    def update_post(self, client, client_message):
+        if len(client_message) < 3:
+            message = "Usage: update-post <post-id> --title/content <new>\n"
+            client.conn.sendall(message.encode())
+            return
+
+        if not client.get_login_stat():
+            message = "Please login first.\n"
+            client.conn.sendall(message.encode())
+            return
+
+        db = Database("bbs.db")
+        author = db.get_post_owner(client_message[0])
+        if author == None:
+            message = "Post does not exist.\n"
+            client.conn.sendall(message.encode())
+            return
+
+        if author != client.get_userid():
+            message = "You are not the post owner.\n"
+            client.conn.sendall(message.encode())
+            return
+
+        if client_message[2] == "--title":
+            title = ""
+            index = 2
+            while index < len(client_message):
+                title += client_message[index]
+                index += 1
+            db.update_post_title(client_message[0], title)
+        elif client_message[2] == "--content":
+            content = ""
+            index = 2
+            while index < len(client_message):
+                content += client_message[index]
+                index += 1
+            db.update_post_content(client_message[0], content)
+        else:
+            message = "Usage: update-post <post-id> --title/content <new>\n"
+            client.conn.sendall(message.encode())
+            return
+
+    def comment(self, client, client_message):
+        if len(client_message) < 2:
+            message = "Usage: comment <post-id> <comment>\n"
+            client.conn.sendall(message.encode())
+            return
+
+        if not client.get_login_stat():
+            message = "Please login first.\n"
+            client.conn.sendall(message.encode())
+            return
+
+        db = Database("bbs.db")
+        author = db.get_post_owner(client_message[0])
+        if author == None:
+            message = "Post does not exist.\n"
+            client.conn.sendall(message.encode())
+            return
+
+        comment = ""
+        index = 1
+        while index < len(client_message):
+            comment += client_message[index]
+
+        db.comment(client_message[0], comment)
 
     ### MISC ###
     def exit(self, client, client_message):
