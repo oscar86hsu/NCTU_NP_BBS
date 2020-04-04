@@ -1,4 +1,5 @@
 import sqlite3
+import logging
 
 class Database:
     def __init__(self, dbname):
@@ -6,6 +7,7 @@ class Database:
         self.cur = self.conn.cursor()
 
     def init_db(self):
+        logging.debug("Initializing Database...")
         init_sql = '''CREATE TABLE IF NOT EXISTS users(UID INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL UNIQUE,
         email TEXT NOT NULL,
@@ -25,10 +27,12 @@ class Database:
     def create_user(self, username, email, password):
         sql = "INSERT INTO users(username, email, password) VALUES('{}', '{}', '{}')".format(username, email, password)
         self.execute(sql)
+        logging.info("User {} created.".format(username))
 
     def delete_user(self, username):
         sql = "DELETE FROM users WHERE username='{}'".format(username)
         self.execute(sql)
+        logging.info("User {} deleted.".format(username))
 
     def execute(self, sql):
         result = self.cur.execute(sql)

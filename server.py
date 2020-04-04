@@ -2,7 +2,12 @@
 import socket
 import sys
 import threading
+import logging
 from db import Database
+
+logging.basicConfig(level=logging.DEBUG, 
+                    format='%(asctime)s [%(levelname)s] %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 
 class Exit(Exception):
     pass
@@ -30,6 +35,7 @@ class Connection:
 
 class BBS_Server:
     def __init__(self, host, port):
+        logging.debug("Initializing Server...")
         super().__init__()
         self.host = host
         self.port = port
@@ -41,7 +47,7 @@ class BBS_Server:
         self.sock.bind((self.host, self.port))
         self.sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
         self.sock.listen(50)
-        print("Server starts at port", self.port)
+        logging.info("Start listening at port {}".format(self.port))
 
         while True:
             try:
@@ -50,34 +56,38 @@ class BBS_Server:
                 t = threading.Thread(target=self.connection_handler, args=(client,), daemon=True)
                 t.start()
             except KeyboardInterrupt:
-                print("Bye")
+                logging.info("Keyboard Interrupt Exit!")
                 self.sock.close()
                 exit(0)
 
     def connection_handler(self, client):
+        logging.info("New connection, {}.".format(client.addr))
         print("New connection.")
         self.send_welcome_message(client)
         while True:
             try:
                 self.wait(client)
             except Exit:
+                logging.info("Connection Closed.")
                 del client
                 exit(0)
             except BrokenPipeError:
+                logging.warning("Broken Pipe.")
                 del client
-                print("Broken Pipe.")
                 exit(0)
 
     def send_welcome_message(self, client):
         welcome_message = "\n********************************\n** Welcome to the BBS server. **\n********************************\n"
         client.conn.sendall(welcome_message.encode())
         client.set_login_stat(False)
+        logging.debug("Welcome message sent!")
 
     def wait(self, client):
         while True:
             try:
                 client.conn.sendall('% '.encode())
                 raw_client_message = client.conn.recv(1024)
+                logging.debug("Raw client message: {}".format(raw_client_message))
                 if raw_client_message == b'\xff\xf4\xff\xfd\x06':
                     self.exit(client, [])
                 else:
@@ -132,11 +142,13 @@ class BBS_Server:
         username, password = db.get_user(client_message[0])
 
         if (username == None) or (password != client_message[1]):
+            logging.warning("{} login failed!".format(client_message[0]))
             message = "Login failed.\n"
             client.conn.sendall(message.encode())
             return
 
         message = "Welcome, {}.\n".format(client_message[0])
+        logging.info("{} login successfully!".format(client_message[0]))
         client.conn.sendall(message.encode())
         client.set_login_stat(True)
         client.set_username(client_message[0])
@@ -153,6 +165,7 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
+        logging.info("{} logout successfully!".format(client.get_username()))
         message = "Bye, {}.\n".format(client.get_username())
         client.set_login_stat(False)
         client.conn.sendall(message.encode())
@@ -179,6 +192,7 @@ class BBS_Server:
             message = "Usage: exit\n"
             client.conn.sendall(message.encode())
         client.conn.close()
+        logging.info("Connection Closed, {}".format(client.addr))
         print("Connection Closed")
         raise Exit()
 
@@ -204,5 +218,6 @@ if __name__ == "__main__":
         PORT = 3000
 
     server = BBS_Server('', PORT)
+    logging.debug("Server created!")
     server.start_listening()
     del server
