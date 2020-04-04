@@ -17,6 +17,7 @@ class Connection:
         super().__init__()
         self.is_login = False
         self.username = None
+        self.uid = -1
         self.conn = conn
         self.addr = addr
 
@@ -25,6 +26,9 @@ class Connection:
 
     def set_username(self, value):
         self.username = value
+
+    def set_userid(self, value):
+        self.uid = value
 
     def get_login_stat(self):
         return self.is_login
@@ -116,7 +120,7 @@ class BBS_Server:
             return
 
         db = Database("bbs.db")
-        username, password = db.get_user(client_message[0])
+        uid, username, password = db.get_user(client_message[0])
         if  username != None:
             message = "Username is already used.\n"
             client.conn.sendall(message.encode())
@@ -139,7 +143,7 @@ class BBS_Server:
             return
 
         db = Database("bbs.db")
-        username, password = db.get_user(client_message[0])
+        uid, username, password = db.get_user(client_message[0])
 
         if (username == None) or (password != client_message[1]):
             logging.warning("{} login failed!".format(client_message[0]))
@@ -152,6 +156,7 @@ class BBS_Server:
         client.conn.sendall(message.encode())
         client.set_login_stat(True)
         client.set_username(client_message[0])
+        client.set_userid(uid)
         return
         
     def logout(self, client, client_message):
