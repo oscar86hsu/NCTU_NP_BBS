@@ -170,7 +170,7 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        message = client.username + ".\n"
+        message = client.username + "\n"
         client.conn.sendall(message.encode())
         return
 
