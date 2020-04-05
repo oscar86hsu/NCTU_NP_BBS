@@ -179,7 +179,7 @@ class BasicLoginTest(unittest.TestCase):
         s.send("whoami\r\n".encode())
         time.sleep(0.1)
         raw_message = s.recv(1024)
-        self.assertIn(b'exist_user.\n', raw_message)
+        self.assertIn(b'exist_user\n', raw_message)
         s.send("exit\r\n".encode())
         s.close()
         del s
