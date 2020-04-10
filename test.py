@@ -1,25 +1,24 @@
 import unittest
 import socket
-import server
 import time
 import threading
+import server
 from db import Database
 
-
-HOST = '127.0.0.1'
-
+HOST = "127.0.0.1"
+PORT = 6000
 
 class ConnectionTest(unittest.TestCase):
     @classmethod    
     def setUpClass(cls):
-        test_server = server.BBS_Server('127.0.0.1', 6000)
+        test_server = server.BBS_Server(HOST, PORT)
         t = threading.Thread(target=test_server.start_listening, args=(), daemon=True)
         t.start()
         time.sleep(0.1)
 
     def connect(self):
         s = socket.socket()
-        s.connect(('127.0.0.1', 6000))
+        s.connect((HOST, PORT))
         raw_message = s.recv(1024)
         time.sleep(1)
         return s
@@ -45,7 +44,7 @@ class BasicLoginTest(unittest.TestCase):
     def setUpClass(cls):
         db = Database("bbs.db")
         db.create_user('exist_user', 'exist_email', 'exist_password')
-        test_server = server.BBS_Server('127.0.0.1', 6001)
+        test_server = server.BBS_Server(HOST, PORT)
         t = threading.Thread(target=test_server.start_listening, args=(), daemon=True)
         t.start()
         time.sleep(0.1)
@@ -58,7 +57,7 @@ class BasicLoginTest(unittest.TestCase):
 
     def connect(self):
         s = socket.socket()
-        s.connect(('127.0.0.1', 6001))
+        s.connect((HOST, PORT))
         raw_message = s.recv(1024)
         return s
 
