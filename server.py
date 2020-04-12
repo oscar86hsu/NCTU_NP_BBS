@@ -41,12 +41,14 @@ class Connection:
 
 
 class BBS_Server:
-    def __init__(self, host, port):
+    def __init__(self, host, port, dbname = "bbs.db"):
         logging.debug("Initializing Server...")
         super().__init__()
         self.host = host
         self.port = port
-        db = Database("bbs.db")
+        self.dbname = dbname
+        db = Database(self.dbname)
+        logging.debug("Database name: {}".format(self.dbname))
         db.init_db()
 
     def start_listening(self):
@@ -139,7 +141,7 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        db = Database("bbs.db")
+        db = Database(self.dbname)
         uid, username, password = db.get_user(client_message[0])
         if  username != None:
             message = "Username is already used.\n"
@@ -162,7 +164,7 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        db = Database("bbs.db")
+        db = Database(self.dbname)
         uid, username, password = db.get_user(client_message[0])
 
         if (username == None) or (password != client_message[1]):
@@ -224,7 +226,7 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        db = Database("bbs.db")
+        db = Database(self.dbname)
         if db.is_board_exist(client_message[0]):
             message = "Board is already exist.\n"
             client.conn.sendall(message.encode())
@@ -256,7 +258,7 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        db = Database("bbs.db")
+        db = Database(self.dbname)
         if not db.is_board_exist():
             message = "Board does not exist.\n"
             client.conn.sendall(message.encode())
@@ -286,10 +288,10 @@ class BBS_Server:
             return
 
         if len(client_message) < 1:
-            db = Database("bbs.db")
+            db = Database(self.dbname)
             boards = db.list_all_board()
         elif client_message[1].startswith("##"):
-            db = Database("bbs.db")
+            db = Database(self.dbname)
             boards = db.list_board(client_message[1][2:])
         else:
             message = "Usage: list-board (##<key>)\n"
@@ -314,17 +316,17 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        db = Database("bbs.db")
+        db = Database(self.dbname)
         if not db.is_board_exist(client_message[0]):
             message = "Board does not exist.\n"
             client.conn.sendall(message.encode())
             return
 
         if len(client_message) < 3:
-            db = Database("bbs.db")
+            db = Database(self.dbname)
             posts = db.list_all_post(client_message[0])
         elif client_message[2].startswith("##"):
-            db = Database("bbs.db")
+            db = Database(self.dbname)
             posts = db.list_board(client_message[0], client_message[1][2:])
         else:
             message = "Usage: list-post <board-name> (##<key>)\n"
@@ -349,7 +351,7 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        db = Database("bbs.db")
+        db = Database(self.dbname)
         post, comments = db.read_post(client_message[0])
 
         if post == None:
@@ -380,7 +382,7 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        db = Database("bbs.db")
+        db = Database(self.dbname)
         author = db.get_post_owner(client_message[0])
         if author == None:
             message = "Post does not exist.\n"
@@ -405,7 +407,7 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        db = Database("bbs.db")
+        db = Database(self.dbname)
         author = db.get_post_owner(client_message[0])
         if author == None:
             message = "Post does not exist.\n"
@@ -447,7 +449,7 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        db = Database("bbs.db")
+        db = Database(self.dbname)
         author = db.get_post_owner(client_message[0])
         if author == None:
             message = "Post does not exist.\n"

@@ -1,3 +1,4 @@
+import os
 import unittest
 import socket
 import time
@@ -11,10 +12,14 @@ PORT = 6000
 class ConnectionTest(unittest.TestCase):
     @classmethod    
     def setUpClass(cls):
-        test_server = server.BBS_Server(HOST, PORT)
+        test_server = server.BBS_Server(HOST, PORT, "test_connection.db")
         t = threading.Thread(target=test_server.start_listening, args=(), daemon=True)
         t.start()
         time.sleep(0.1)
+
+    @classmethod
+    def tearDownClass(cls):
+        os.remove("test_connection.db")
 
     def connect(self):
         s = socket.socket()
@@ -42,18 +47,17 @@ class ConnectionTest(unittest.TestCase):
 class BasicLoginTest(unittest.TestCase):
     @classmethod    
     def setUpClass(cls):
-        db = Database("bbs.db")
-        db.create_user('exist_user', 'exist_email', 'exist_password')
-        test_server = server.BBS_Server(HOST, PORT)
+        dbname = "test_login.db"
+        test_server = server.BBS_Server(HOST, PORT, dbname)
         t = threading.Thread(target=test_server.start_listening, args=(), daemon=True)
         t.start()
         time.sleep(0.1)
+        db = Database(dbname)
+        db.create_user('exist_user', 'exist_email', 'exist_password')
 
     @classmethod
     def tearDownClass(cls):
-        db = Database("bbs.db")
-        db.delete_user('exist_user')
-        db.delete_user('new_user')
+        os.remove("test_login.db")
 
     def connect(self):
         s = socket.socket()
@@ -182,6 +186,7 @@ class BasicLoginTest(unittest.TestCase):
         s.send("exit\r\n".encode())
         s.close()
         del s
+
 
 if __name__ == "__main__":
     unittest.main(buffer=True)
