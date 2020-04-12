@@ -86,7 +86,7 @@ class Database:
             return True
 
     def list_board(self, keyword):
-        sql = "SELECT board.UID, board.name, user.username FROM board, user WHERE user.UID=board.moderator and board.name LIKE %{}%".format(keyword)
+        sql = "SELECT board.UID, board.name, user.username FROM board, user WHERE user.UID=board.moderator and board.name LIKE '%{}%'".format(keyword)
         return self.execute(sql).fetchall()
 
     def list_all_board(self):
