@@ -5,10 +5,6 @@ import threading
 import logging
 from db import Database
 
-logging.basicConfig(level=logging.DEBUG, 
-                    format='%(asctime)s [%(levelname)s] %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
-
 class Exit(Exception):
     pass
 
@@ -290,9 +286,9 @@ class BBS_Server:
         if len(client_message) < 1:
             db = Database(self.dbname)
             boards = db.list_all_board()
-        elif client_message[1].startswith("##"):
+        elif client_message[0].startswith("##"):
             db = Database(self.dbname)
-            boards = db.list_board(client_message[1][2:])
+            boards = db.list_board(client_message[0][2:])
         else:
             message = "Usage: list-board (##<key>)\n"
             client.conn.sendall(message.encode())
