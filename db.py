@@ -74,7 +74,7 @@ class Database:
         logging.info("Board {} created.".format(name))
 
     def create_post(self, author, title, content):
-        sql = "INSERT INTO post(author, title, content) VALUE('{}', '{}', '{}')".format(author, title, content)
+        sql = "INSERT INTO post(author, title, content) VALUES('{}', '{}', '{}')".format(author, title, content)
         self.execute(sql)
         logging.info("Post {} created.".format(title))
 
