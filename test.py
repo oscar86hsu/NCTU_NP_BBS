@@ -340,7 +340,114 @@ class BoardTest(unittest.TestCase):
         s.send("exit\r\n".encode())
         s.close()
         del s
-        
+
+
+class PostTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        PORT = 6003
+        dbname = "test_post.db"
+        test_server = server.BBS_Server(HOST, PORT, dbname)
+        t = threading.Thread(
+            target=test_server.start_listening, args=(), daemon=True)
+        t.start()
+        time.sleep(0.1)
+        db = Database(dbname)
+        db.create_user('exist_user', 'exist_email', 'exist_password')
+        db.create_user('other_user', 'other_email', 'other_password')
+        db.create_board('exist_board', '1')
+        db.create_post('1', 'exist_post', 'exist_content<br>newline', '1')
+        db.create_post('1', 'key_post', 'key_content<br>newline', '1')
+
+    @classmethod
+    def tearDownClass(cls):
+        os.remove("test_post.db")
+
+    def connect(self):
+        PORT = 6003
+        s = socket.socket()
+        s.connect((HOST, PORT))
+        raw_message = s.recv(1024)
+        return s
+
+    def test_create_post_success(self):
+        s = self.connect()
+        s.send("login exist_user exist_password\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Welcome, exist_user.\n', raw_message)
+
+        s.send("create-post exist_board --title test title --content test_content 123 <br> 456 789\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Create post successfully.\n', raw_message)
+
+        sql = ''' SELECT title, content FROM post WHERE title='test title'; '''
+        db = Database("test_post.db")
+        result = db.execute(sql).fetchall()
+        self.assertEqual(len(result), 1)
+        self.assertEqual("test title", result[0][0])
+        self.assertEqual("test_content 123 <br> 456 789", result[0][1])
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+        sql = ''' DELETE FROM post WHERE title="test title" '''
+        db.execute(sql)
+
+    def test_create_post_fail_command(self):
+        s = self.connect()
+        s.send("login exist_user exist_password\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Welcome, exist_user.\n', raw_message)
+
+        s.send("create-post --title test title --content test_content 123 <br> 456 789\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Usage: create-post <board-name> --title <title> --content <content>\n', raw_message)
+
+        s.send("create-post".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Usage: create-post <board-name> --title <title> --content <content>\n', raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    def test_create_post_fail_login(self):
+        s = self.connect()
+        s.send("create-post exist_board --title test title --content test_content 123 <br> 456 789\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Please login first.\n', raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    def test_create_post_success(self):
+        s = self.connect()
+        s.send("login exist_user exist_password\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Welcome, exist_user.\n', raw_message)
+
+        s.send("create-post not_exist_board --title test title --content test_content 123 <br> 456 789\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Board does not exist.\n', raw_message)
+
+        sql = ''' SELECT title, content FROM post WHERE title='test title'; '''
+        db = Database("test_post.db")
+        result = db.execute(sql).fetchall()
+        self.assertEqual(len(result), 0)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
 
 
 if __name__ == "__main__":
