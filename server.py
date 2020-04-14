@@ -239,6 +239,15 @@ class BBS_Server:
             message = "Usage: create-post <board-name> --title <title> --content <content>\n"
             client.conn.sendall(message.encode())
             return
+        elif client_message[0] == "--title" or client_message[0] == "--content":
+            message = "Usage: create-post <board-name> --title <title> --content <content>\n"
+            client.conn.sendall(message.encode())
+            return
+        
+        if not client.get_login_stat():
+            message = "Please login first.\n"
+            client.conn.sendall(message.encode())
+            return
 
         try:
             title_index = client_message.index("--title")
@@ -255,7 +264,7 @@ class BBS_Server:
             return
 
         db = Database(self.dbname)
-        if not db.is_board_exist():
+        if not db.is_board_exist(client_message[0]):
             message = "Board does not exist.\n"
             client.conn.sendall(message.encode())
             return
@@ -264,15 +273,23 @@ class BBS_Server:
         content = ""
         tmp = ""
 
-        while (tmp != "--content") and (title_index <= len(client_message)):
+        while title_index < (len(client_message) - 1):
             title_index += 1
-            title += client_message[title_index]
+            tmp = client_message[title_index]
+            if tmp == "--content":
+                break
+            title += client_message[title_index] + " "
 
-        while (tmp != "--title") and (content_index <= len(client_message)):
+        while content_index < (len(client_message) - 1):
             content_index += 1
-            content += client_message[content_index]
+            tmp = client_message[title_index]
+            if tmp == "--title":
+                break
+            content += client_message[content_index] + " "
 
-        db.create_post(client.get_userid(), title, content)
+        title = title[:-1]
+        content = content[:-1]
+        db.create_post(client.get_userid(), title, content, client_message[0])
         logging.info("Post {} created.".format(title))
         message = "Create post successfully.\n"
         client.conn.sendall(message.encode())

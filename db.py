@@ -73,8 +73,10 @@ class Database:
         self.execute(sql)
         logging.info("Board {} created.".format(name))
 
-    def create_post(self, author, title, content):
-        sql = "INSERT INTO post(author, title, content) VALUES('{}', '{}', '{}')".format(author, title, content)
+    def create_post(self, author, title, content ,board):
+        sql = "SELECT UID FROM board WHERE name='{}'".format(board)
+        UID = self.execute(sql)
+        sql = "INSERT INTO post(author, title, content, board) VALUES('{}', '{}', '{}', '{}')".format(author, title, content, UID)
         self.execute(sql)
         logging.info("Post {} created.".format(title))
 
