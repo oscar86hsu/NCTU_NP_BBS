@@ -483,7 +483,6 @@ class BBS_Server:
             client.conn.sendall(message.encode())
         client.conn.close()
         logging.info("Connection Closed, {}".format(client.addr))
-        print("Connection Closed")
         raise Exit()
 
     def echo(self, client, client_message):
