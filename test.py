@@ -1,4 +1,5 @@
 import os
+import glob
 import unittest
 import socket
 import time
@@ -7,17 +8,27 @@ import logging
 import server
 from db import Database
 
+fileList = glob.glob('*.db')
+for filePath in fileList:
+    try:
+        if filePath == 'bbs.db':
+            continue
+        os.remove(filePath)
+    except OSError:
+        print("Error while deleting file")
+
+
 # logging.basicConfig(level=logging.DEBUG,
 #                     format='%(asctime)s [%(levelname)s] %(message)s',
 #                     datefmt='%Y-%m-%d %H:%M:%S')
 
 HOST = "127.0.0.1"
-PORT = 6000
 
 
 class ConnectionTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        PORT = 6000
         test_server = server.BBS_Server(HOST, PORT, "test_connection.db")
         t = threading.Thread(
             target=test_server.start_listening, args=(), daemon=True)
@@ -29,6 +40,7 @@ class ConnectionTest(unittest.TestCase):
         os.remove("test_connection.db")
 
     def connect(self):
+        PORT = 6000
         s = socket.socket()
         s.connect((HOST, PORT))
         raw_message = s.recv(1024)
@@ -56,6 +68,7 @@ class LoginTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         dbname = "test_login.db"
+        PORT = 6001
         test_server = server.BBS_Server(HOST, PORT, dbname)
         t = threading.Thread(
             target=test_server.start_listening, args=(), daemon=True)
@@ -69,6 +82,7 @@ class LoginTest(unittest.TestCase):
         os.remove("test_login.db")
 
     def connect(self):
+        PORT = 6001
         s = socket.socket()
         s.connect((HOST, PORT))
         raw_message = s.recv(1024)
@@ -201,6 +215,7 @@ class LoginTest(unittest.TestCase):
 class BoardTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        PORT = 6002
         dbname = "test_board.db"
         test_server = server.BBS_Server(HOST, PORT, dbname)
         t = threading.Thread(
@@ -217,6 +232,7 @@ class BoardTest(unittest.TestCase):
         os.remove("test_board.db")
 
     def connect(self):
+        PORT = 6002
         s = socket.socket()
         s.connect((HOST, PORT))
         raw_message = s.recv(1024)
@@ -324,9 +340,10 @@ class BoardTest(unittest.TestCase):
         s.send("exit\r\n".encode())
         s.close()
         del s
-
-
+        
 
 
 if __name__ == "__main__":
     unittest.main(buffer=True)
+
+      
