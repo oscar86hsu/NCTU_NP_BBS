@@ -377,9 +377,9 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        message =  "Author   : " + post[0] + "\n"
-        message += "Title    : " + post[1] + "\n"
-        message += "Date     : " + post[2] + "\n"
+        message =  "Author  : " + post[0] + "\n"
+        message += "Title   : " + post[1] + "\n"
+        message += "Date    : " + post[2] + "\n"
         message += "--\n"
         message += post[3].replace("<br>", "\n") + "\n"
         message += "--\n"
