@@ -360,8 +360,7 @@ class BBS_Server:
         message = "{:8}{:12}{:12}{:12}\n".format("ID", "Title", "Author", "Date")
         client.conn.sendall(message.encode())
         for post in posts:
-            print(post)
-            message = "{:8}{:12}{:12}{:12}\n".format(post[0], post[1], post[2], post[3])
+            message = "{:8}{:12}{:12}{:12}\n".format(str(post[0]), post[1], post[2], post[3])
             client.conn.sendall(message.encode())
 
     def read(self, client, client_message):
