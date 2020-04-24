@@ -97,7 +97,7 @@ class Database:
 
     def list_post(self, board, keyword):
         sql = '''
-        SELECT post.UID, post.title, user.username, post.date  
+        SELECT post.UID, post.title, user.username, date(post.date)  
         FROM post, user, board
         WHERE user.UID=post.author and board.UID=post.board 
         and board.name='{}' and post.title LIKE %{}%
@@ -106,7 +106,7 @@ class Database:
 
     def list_all_post(self, board):
         sql = '''
-        SELECT post.UID, post.title, user.username, post.date  
+        SELECT post.UID, post.title, user.username, date(post.date)  
         FROM post, user, board
         WHERE user.UID=post.author and board.UID=post.board 
         and board.name='{}'
@@ -114,7 +114,7 @@ class Database:
         return self.execute(sql).fetchall()
 
     def read_post(self, post_id):
-        sql = "SELECT user.username, post.title, post.date, post.content FROM post, user WHERE post.UID={} and user.UID=post.author".format(post_id)
+        sql = "SELECT user.username, post.title, date(post.date), post.content FROM post, user WHERE post.UID={} and user.UID=post.author".format(post_id)
         post = self.execute(sql).fetchone()
         sql = "SELECT author, content, UID FROM comment WHERE post={} ORDER BY UID".format(post_id)
         comment = self.execute(sql).fetchall()
