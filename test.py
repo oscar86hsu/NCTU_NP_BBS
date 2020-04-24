@@ -544,7 +544,83 @@ class PostTest(unittest.TestCase):
         s.close()
         del s
 
-    
+    def test_update_post_success(self):
+        s = self.connect()
+        s.send("login exist_user exist_password\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Welcome, exist_user.\n', raw_message)
+
+        s.send("update-post 1 --title update title".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Update successfully.\n', raw_message)
+
+        db = Database("test_post.db")
+        sql = "SELECT title FROM post WHERE UID=1"
+        result = db.execute(sql).fetchone()
+        self.assertEqual("update title", result[0])
+
+        s.send("update-post 1 --content update content XDDDDD lol abcdefg".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Update successfully.\n', raw_message)
+
+        sql = "SELECT content FROM post WHERE UID=1"
+        result = db.execute(sql).fetchone()
+        self.assertEqual("update content XDDDDD lol abcdefg", result[0])
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    def test_update_post_fail_post_not_exist(self):
+        s = self.connect()
+        s.send("update-post 1 --title update title".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Please login first.\n', raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    def test_update_post_fail_login(self):
+        s = self.connect()
+
+        s.send("login exist_user exist_password\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Welcome, exist_user.\n', raw_message)
+
+        s.send("update-post 3 --title update title".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Post does not exist.\n', raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+
+    def test_update_post_fail_owner(self):
+        s = self.connect()
+
+        s.send("login other_user other_password\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Welcome, other_user.\n', raw_message)
+
+        s.send("update-post 1 --title update1 title".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Not the post owner.\n', raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+        
 
 
 
