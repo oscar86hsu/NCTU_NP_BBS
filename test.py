@@ -357,8 +357,10 @@ class PostTest(unittest.TestCase):
         db.create_user('exist_user', 'exist_email', 'exist_password')
         db.create_user('other_user', 'other_email', 'other_password')
         db.create_board('exist_board', '1')
+        db.create_board('delete_board', '1')
         db.create_post('1', 'exist_post', 'exist_content<br>newline', 'exist_board')
         db.create_post('1', 'key_post', 'key_content<br>newline', 'exist_board')
+        db.create_post('1', 'delete_post', 'delete_post<br>newline', 'delete_board')
 
     @classmethod
     def tearDownClass(cls):
@@ -534,7 +536,7 @@ class PostTest(unittest.TestCase):
 
     def test_read_post_success(self):
         s = self.connect()
-        s.send("read 3".encode())
+        s.send("read 5".encode())
         time.sleep(0.1)
         raw_message = s.recv(1024)
         
@@ -593,7 +595,7 @@ class PostTest(unittest.TestCase):
         raw_message = s.recv(1024)
         self.assertIn(b'Welcome, exist_user.\n', raw_message)
 
-        s.send("update-post 3 --title update title".encode())
+        s.send("update-post 5 --title update title".encode())
         time.sleep(0.1)
         raw_message = s.recv(1024)
         self.assertIn(b'Post does not exist.\n', raw_message)
@@ -615,6 +617,78 @@ class PostTest(unittest.TestCase):
         time.sleep(0.1)
         raw_message = s.recv(1024)
         self.assertIn(b'Not the post owner.\n', raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    def test_delete_post_fail_login(self):
+        s = self.connect()
+
+        s.send("delete-post 1".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Please login first.\n', raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    def test_delete_post_fail_not_exist(self):
+        s = self.connect()
+
+        s.send("login exist_user exist_password\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Welcome, exist_user.\n', raw_message)
+
+        s.send("delete-post 6".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Post does not exist.\n', raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    def test_delete_post_fail_owner(self):
+        s = self.connect()
+
+        s.send("login other_user other_password\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Welcome, other_user.\n', raw_message)
+
+        s.send("delete-post 1".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Not the post owner.\n', raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    def test_delete_post_success(self):
+        s = self.connect()
+
+        s.send("login exist_user exist_password\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Welcome, exist_user.\n', raw_message)
+
+        s.send("delete-post 3".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Delete successfully.\n', raw_message)
+
+        db = Database("test_post.db")
+        sql = "SELECT title FROM post WHERE UID=3"
+        result = db.execute(sql).fetchone()
+        self.assertEqual(None, result)
+
+        sql = "SELECT title FROM post WHERE UID=2"
+        result = db.execute(sql).fetchone()
+        self.assertEqual("key_post", result[0])
 
         s.send("exit\r\n".encode())
         s.close()
