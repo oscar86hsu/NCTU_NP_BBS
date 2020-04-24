@@ -385,7 +385,7 @@ class BBS_Server:
         message += "--\n"
         client.conn.sendall(message.encode())
         for comment in comments:
-            message = comment[0] + " : " + comment[1]
+            message = comment[0] + " : " + comment[1] + "\n"
             client.conn.sendall(message.encode())
             
         
@@ -484,9 +484,13 @@ class BBS_Server:
         comment = ""
         index = 1
         while index < len(client_message):
-            comment += client_message[index]
+            comment += client_message[index] + " "
+            index += 1
 
-        db.comment(client_message[0], comment)
+        db.comment(client_message[0], client.get_userid() ,comment[:-1])
+        message = "Comment successfully.\n"
+        client.conn.sendall(message.encode())
+        return
 
     ### MISC ###
     def exit(self, client, client_message):

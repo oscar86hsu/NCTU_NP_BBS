@@ -695,8 +695,97 @@ class PostTest(unittest.TestCase):
         del s
 
         
+class CommentTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        PORT = 6004
+        dbname = "test_comment.db"
+        test_server = server.BBS_Server(HOST, PORT, dbname)
+        t = threading.Thread(
+            target=test_server.start_listening, args=(), daemon=True)
+        t.start()
+        time.sleep(0.1)
+        db = Database(dbname)
+        db.create_user('exist_user', 'exist_email', 'exist_password')
+        db.create_user('other_user', 'other_email', 'other_password')
+        db.create_board('exist_board', '1')
+        db.create_post('1', 'exist_post', 'exist_content<br>newline', 'exist_board')
 
+    @classmethod
+    def tearDownClass(cls):
+        os.remove("test_comment.db")
 
+    def connect(self):
+        PORT = 6004
+        s = socket.socket()
+        s.connect((HOST, PORT))
+        raw_message = s.recv(1024)
+        return s
+
+    def test_comment_fail_login(self):
+        s = self.connect()
+
+        s.send("comment 1 this is a comment\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Please login first.\n', raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    def test_comment_fail_post_not_exist(self):
+        s = self.connect()
+
+        s.send("login other_user other_password\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Welcome, other_user.\n', raw_message)
+
+        s.send("comment 5 this is a comment\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Post does not exist.\n', raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    def test_comment_success(self):
+        s = self.connect()
+
+        s.send("login other_user other_password\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Welcome, other_user.\n', raw_message)
+
+        s.send("comment 1 this is a comment\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Comment successfully.\n', raw_message)
+
+        s.send("comment 1 this is another comment\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Comment successfully.\n', raw_message)
+
+        s.send("read 1\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        today = date.today().strftime("%Y-%m-%d")
+        message =  "Author  : exist_user\n"
+        message += "Title   : exist_post\n"
+        message += "Date    : " + today + "\n"
+        message += "--\n"
+        message += "exist_content\nnewline\n"
+        message += "--\n"
+        message += "other_user : this is a comment\n"
+        message += "other_user : this is another comment\n"
+        self.assertIn(message.encode(), raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
 
 
 if __name__ == "__main__":
