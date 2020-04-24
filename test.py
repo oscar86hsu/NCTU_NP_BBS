@@ -514,6 +514,39 @@ class PostTest(unittest.TestCase):
         s.close()
         del s
         
+    def test_read_post_success(self):
+        s = self.connect()
+        s.send("read 1".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        today = date.today().strftime("%Y-%m-%d")
+        message =  "Author  : exist_user\n"
+        message += "Title   : exist_post\n"
+        message += "Date    : " + today + "\n"
+        message += "--\n"
+        message += "exist_content\nnewline"
+        message += "--\n"
+        self.assertIn(message.encode(), raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    def test_read_post_success(self):
+        s = self.connect()
+        s.send("read 3".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        
+        self.assertIn(b'Post does not exist.', raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    
+
+
 
 
 if __name__ == "__main__":
