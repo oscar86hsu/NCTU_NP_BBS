@@ -7,6 +7,7 @@ import threading
 import logging
 import server
 from db import Database
+from datetime import date
 
 fileList = glob.glob('*.db')
 for filePath in fileList:
@@ -387,12 +388,14 @@ class PostTest(unittest.TestCase):
         raw_message = s.recv(1024)
         self.assertIn(b'Create post successfully.\n', raw_message)
 
-        sql = ''' SELECT title, content FROM post WHERE title='test title'; '''
+        sql = ''' SELECT title, content, board, author FROM post WHERE title='test title'; '''
         db = Database("test_post.db")
         result = db.execute(sql).fetchall()
         self.assertEqual(len(result), 1)
         self.assertEqual("test title", result[0][0])
         self.assertEqual("test_content 123 <br> 456 789", result[0][1])
+        self.assertEqual(1, result[0][2])
+        self.assertEqual(1, result[0][3])
 
         sql = ''' SELECT title, content, board, author FROM post WHERE title='test1 title1'; '''
         result = db.execute(sql).fetchall()
@@ -406,8 +409,6 @@ class PostTest(unittest.TestCase):
         s.close()
         del s
 
-        sql = ''' DELETE FROM post WHERE title="test title" '''
-        db.execute(sql)
 
     def test_create_post_fail_command(self):
         s = self.connect()
@@ -467,19 +468,52 @@ class PostTest(unittest.TestCase):
         s.close()
         del s
 
-    # def test_list_post(self):
-    #     s = self.connect()
-    #     s.send("list-post exist_board".encode())
-    #     time.sleep(0.1)
-    #     raw_message = s.recv(1024)
-    #     message = "{:8}{:12}{:12}{:12}\n".format("ID", "Title", "Author", "Date")
-    #     message += "{:8}{:12}{:12}{:12}\n".format("1", "exist_post", "exist_user", "Date")
-    #     self.assertIn(b'Board does not exist.\n', raw_message)
-    #     db.create_user('exist_user', 'exist_email', 'exist_password')
-    #     db.create_user('other_user', 'other_email', 'other_password')
-    #     db.create_board('exist_board', '1')
-    #     db.create_post('1', 'exist_post', 'exist_content<br>newline', '1')
-    #     db.create_post('1', 'key_post', 'key_content<br>newline', '1')
+    def test_list_all_post_success(self):
+        db = Database("test_post.db")
+        sql = ''' DELETE FROM post WHERE title="test title" '''
+        db.execute(sql)
+        sql = ''' DELETE FROM post WHERE title="test1 title1" '''
+        db.execute(sql)
+
+        s = self.connect()
+        s.send("list-post exist_board".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        today = date.today().strftime("%Y-%m-%d")
+        message = "{:8}{:12}{:12}{:12}\n".format("ID", "Title", "Author", "Date")
+        message += "{:8}{:12}{:12}{:12}\n".format("1", "exist_post", "exist_user", today)
+        message += "{:8}{:12}{:12}{:12}\n".format("2", "key_post", "exist_user", today)
+        self.assertIn(message.encode(), raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    def test_list_key_post_success(self):
+        s = self.connect()
+        s.send("list-post exist_board ##key".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        today = date.today().strftime("%Y-%m-%d")
+        message = "{:8}{:12}{:12}{:12}\n".format("ID", "Title", "Author", "Date")
+        message += "{:8}{:12}{:12}{:12}\n".format("2", "key_post", "exist_user", today)
+        self.assertIn(message.encode(), raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+
+    def test_list_post_fail_board_not_exist(self):
+        s = self.connect()
+        s.send("list-post not_exist_board".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Board does not exist.', raw_message)
+
+        s.send("exit\r\n".encode())
+        s.close()
+        del s
+        
 
 
 if __name__ == "__main__":
