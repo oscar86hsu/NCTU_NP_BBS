@@ -116,7 +116,7 @@ class Database:
     def read_post(self, post_id):
         sql = "SELECT user.username, post.title, date(post.date), post.content FROM post, user WHERE post.UID={} and user.UID=post.author".format(post_id)
         post = self.execute(sql).fetchone()
-        sql = "SELECT author, content, UID FROM comment WHERE post={} ORDER BY UID".format(post_id)
+        sql = "SELECT user.username, comment.content, comment.UID FROM comment, user WHERE post={} and user.UID=comment.author ORDER BY comment.UID".format(post_id)
         comment = self.execute(sql).fetchall()
         return post, comment
 
@@ -137,7 +137,7 @@ class Database:
         self.execute(sql)
 
     def comment(self, post_id, user, comment):
-        sql = "INSERT INTO comment(post, author, content) VALUE('{}', '{}', '{}')".format(post_id, user, comment)
+        sql = "INSERT INTO comment(post, author, content) VALUES('{}', '{}', '{}')".format(post_id, user, comment)
         self.execute(sql)
 
     ### MISC ###
