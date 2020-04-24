@@ -346,12 +346,12 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        if len(client_message) < 3:
+        if len(client_message) < 2:
             db = Database(self.dbname)
             posts = db.list_all_post(client_message[0])
-        elif client_message[2].startswith("##"):
+        elif client_message[1].startswith("##"):
             db = Database(self.dbname)
-            posts = db.list_board(client_message[0], client_message[1][2:])
+            posts = db.list_post(client_message[0], client_message[1][2:])
         else:
             message = "Usage: list-post <board-name> (##<key>)\n"
             client.conn.sendall(message.encode())

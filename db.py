@@ -100,7 +100,7 @@ class Database:
         SELECT post.UID, post.title, user.username, date(post.date)  
         FROM post, user, board
         WHERE user.UID=post.author and board.UID=post.board 
-        and board.name='{}' and post.title LIKE %{}%
+        and board.name='{}' and title LIKE '%{}%'
         '''.format(board, keyword)
         return self.execute(sql).fetchall()
 
