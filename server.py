@@ -431,30 +431,34 @@ class BBS_Server:
             message = "Post does not exist.\n"
             client.conn.sendall(message.encode())
             return
-
+        author = author[0]
         if author != client.get_userid():
-            message = "You are not the post owner.\n"
+            message = "Not the post owner.\n"
             client.conn.sendall(message.encode())
             return
 
-        if client_message[2] == "--title":
+        if client_message[1] == "--title":
             title = ""
             index = 2
             while index < len(client_message):
-                title += client_message[index]
+                title += client_message[index] + " "
                 index += 1
-            db.update_post_title(client_message[0], title)
-        elif client_message[2] == "--content":
+            db.update_post_title(client_message[0], title[:-1])
+        elif client_message[1] == "--content":
             content = ""
             index = 2
             while index < len(client_message):
-                content += client_message[index]
+                content += client_message[index] + " "
                 index += 1
-            db.update_post_content(client_message[0], content)
+            db.update_post_content(client_message[0], content[:-1])
         else:
             message = "Usage: update-post <post-id> --title/content <new>\n"
             client.conn.sendall(message.encode())
             return
+
+        message = "Update successfully.\n"
+        client.conn.sendall(message.encode())
+        return
 
     def comment(self, client, client_message):
         if len(client_message) < 2:
