@@ -407,12 +407,15 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
+        author = author[0]
         if author != client.get_userid():
-            message = "You are not the post owner.\n"
+            message = "Not the post owner.\n"
             client.conn.sendall(message.encode())
             return
 
         db.delete_post(client_message[0])
+        message = "Delete successfully.\n"
+        client.conn.sendall(message.encode())
 
     def update_post(self, client, client_message):
         if len(client_message) < 3:
