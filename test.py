@@ -268,7 +268,7 @@ class BoardTest(unittest.TestCase):
         s.send("create-board exist_board\r\n".encode())
         time.sleep(0.1)
         raw_message = s.recv(1024)
-        self.assertIn(b'Board is already exist.\n', raw_message)
+        self.assertIn(b'Board already exist.\n', raw_message)
 
         s.send("exit\r\n".encode())
         s.close()
@@ -356,8 +356,8 @@ class PostTest(unittest.TestCase):
         db.create_user('exist_user', 'exist_email', 'exist_password')
         db.create_user('other_user', 'other_email', 'other_password')
         db.create_board('exist_board', '1')
-        db.create_post('1', 'exist_post', 'exist_content<br>newline', '1')
-        db.create_post('1', 'key_post', 'key_content<br>newline', '1')
+        db.create_post('1', 'exist_post', 'exist_content<br>newline', 'exist_board')
+        db.create_post('1', 'key_post', 'key_content<br>newline', 'exist_board')
 
     @classmethod
     def tearDownClass(cls):
@@ -382,12 +382,25 @@ class PostTest(unittest.TestCase):
         raw_message = s.recv(1024)
         self.assertIn(b'Create post successfully.\n', raw_message)
 
+        s.send("create-post exist_board --content test_content1 123 <br> 456 789 --title test1 title1\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Create post successfully.\n', raw_message)
+
         sql = ''' SELECT title, content FROM post WHERE title='test title'; '''
         db = Database("test_post.db")
         result = db.execute(sql).fetchall()
         self.assertEqual(len(result), 1)
         self.assertEqual("test title", result[0][0])
         self.assertEqual("test_content 123 <br> 456 789", result[0][1])
+
+        sql = ''' SELECT title, content, board, author FROM post WHERE title='test1 title1'; '''
+        result = db.execute(sql).fetchall()
+        self.assertEqual(len(result), 1)
+        self.assertEqual("test1 title1", result[0][0])
+        self.assertEqual("test_content1 123 <br> 456 789", result[0][1])
+        self.assertEqual(1, result[0][2])
+        self.assertEqual(1, result[0][3])
 
         s.send("exit\r\n".encode())
         s.close()
@@ -412,6 +425,11 @@ class PostTest(unittest.TestCase):
         time.sleep(0.1)
         raw_message = s.recv(1024)
         self.assertIn(b'Usage: create-post <board-name> --title <title> --content <content>\n', raw_message)
+        
+        s.send("create-post exist_board --title --content test_content 123 <br> 456 789\r\n".encode())
+        time.sleep(0.1)
+        raw_message = s.recv(1024)
+        self.assertIn(b'Title cannot be empty!\n', raw_message)
 
         s.send("exit\r\n".encode())
         s.close()
@@ -428,7 +446,7 @@ class PostTest(unittest.TestCase):
         s.close()
         del s
 
-    def test_create_post_success(self):
+    def test_create_post_fail_board_not_exist(self):
         s = self.connect()
         s.send("login exist_user exist_password\r\n".encode())
         time.sleep(0.1)
@@ -448,6 +466,20 @@ class PostTest(unittest.TestCase):
         s.send("exit\r\n".encode())
         s.close()
         del s
+
+    # def test_list_post(self):
+    #     s = self.connect()
+    #     s.send("list-post exist_board".encode())
+    #     time.sleep(0.1)
+    #     raw_message = s.recv(1024)
+    #     message = "{:8}{:12}{:12}{:12}\n".format("ID", "Title", "Author", "Date")
+    #     message += "{:8}{:12}{:12}{:12}\n".format("1", "exist_post", "exist_user", "Date")
+    #     self.assertIn(b'Board does not exist.\n', raw_message)
+    #     db.create_user('exist_user', 'exist_email', 'exist_password')
+    #     db.create_user('other_user', 'other_email', 'other_password')
+    #     db.create_board('exist_board', '1')
+    #     db.create_post('1', 'exist_post', 'exist_content<br>newline', '1')
+    #     db.create_post('1', 'key_post', 'key_content<br>newline', '1')
 
 
 if __name__ == "__main__":

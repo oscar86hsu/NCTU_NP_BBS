@@ -75,7 +75,7 @@ class Database:
 
     def create_post(self, author, title, content ,board):
         sql = "SELECT UID FROM board WHERE name='{}'".format(board)
-        UID = self.execute(sql)
+        UID = self.execute(sql).fetchone()[0]
         sql = "INSERT INTO post(author, title, content, board) VALUES('{}', '{}', '{}', '{}')".format(author, title, content, UID)
         self.execute(sql)
         logging.info("Post {} created.".format(title))

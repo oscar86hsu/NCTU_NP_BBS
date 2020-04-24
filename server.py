@@ -53,6 +53,7 @@ class BBS_Server:
         self.sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
         self.sock.listen(50)
         logging.info("Start listening at port {}".format(self.port))
+        print("Start listening at port {}".format(self.port))
 
         while True:
             try:
@@ -224,7 +225,7 @@ class BBS_Server:
 
         db = Database(self.dbname)
         if db.is_board_exist(client_message[0]):
-            message = "Board is already exist.\n"
+            message = "Board already exist.\n"
             client.conn.sendall(message.encode())
             return
 
@@ -280,15 +281,21 @@ class BBS_Server:
                 break
             title += client_message[title_index] + " "
 
+        tmp = ""
         while content_index < (len(client_message) - 1):
             content_index += 1
-            tmp = client_message[title_index]
+            tmp = client_message[content_index]
             if tmp == "--title":
                 break
             content += client_message[content_index] + " "
 
         title = title[:-1]
         content = content[:-1]
+        if len(title) == 0:
+            message = "Title cannot be empty!\n"
+            client.conn.sendall(message.encode())
+            return
+
         db.create_post(client.get_userid(), title, content, client_message[0])
         logging.info("Post {} created.".format(title))
         message = "Create post successfully.\n"
@@ -328,6 +335,10 @@ class BBS_Server:
             message = "Usage: list-post <board-name> (##<key>)\n"
             client.conn.sendall(message.encode())
             return
+        elif len(client_message) == 0:
+            message = "Usage: list-post <board-name> (##<key>)\n"
+            client.conn.sendall(message.encode())
+            return
 
         db = Database(self.dbname)
         if not db.is_board_exist(client_message[0]):
@@ -343,11 +354,6 @@ class BBS_Server:
             posts = db.list_board(client_message[0], client_message[1][2:])
         else:
             message = "Usage: list-post <board-name> (##<key>)\n"
-            client.conn.sendall(message.encode())
-            return
-
-        if len(posts) == 0:
-            message = "There's no post yet\n"
             client.conn.sendall(message.encode())
             return
 
