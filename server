@@ -1,2 +1,4 @@
 #!/bin/bash
-python3 server.py $1
+docker rm --force nctubbs
+docker build -t nctubbs .
+docker run -d -p 7890:3000 --name nctubbs nctubbs
