@@ -6,10 +6,39 @@ Resources:
         Properties: 
             RepositoryName: nctu-np-bbs
 
+    SecurityGroup:
+        Type: AWS::EC2::SecurityGroup
+        Properties: 
+            GroupDescription: SecurityGroup For NCTU BBS
+            GroupName: NCTU_BBS_SG
+            SecurityGroupIngress: 
+                - IpProtocol: tcp
+                  FromPort: 3000
+                  ToPort: 3000
+                  CidrIp: 0.0.0.0/0
+            VpcId: vpc-828f49fa
+
     FargateCluster:
         Type: AWS::ECS::Cluster
         Properties: 
             ClusterName: NCTU-BBS-Cluster
+
+    FargateService:
+        Type: AWS::ECS::Service
+        Properties: 
+            Cluster: NCTU-BBS-Cluster
+            LaunchType: FARGATE
+            ServiceName: NCTU-BBS-Service
+            DesiredCount: 1
+            TaskDefinition: ECS-NCTU-BBS
+            NetworkConfiguration:
+                AwsvpcConfiguration:
+                    AssignPublicIp: ENABLED
+                    SecurityGroups: 
+                      - !Ref SecurityGroup
+                    Subnets: 
+                      - subnet-3b86d642
+                      - subnet-60bf134b
 
     S3Bucket:
         Type: AWS::S3::Bucket
