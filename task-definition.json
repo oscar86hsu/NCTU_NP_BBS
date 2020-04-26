@@ -1,0 +1,30 @@
+{
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "inferenceAccelerators": [],
+    "containerDefinitions": [
+        {
+            "name": "NCTU-BBS",
+            "image": "NCTU-BBS",
+            "resourceRequirements": null,
+            "essential": true,
+            "portMappings": [
+                {
+                    "containerPort": "3000",
+                    "hostPort": "7890"
+                }
+                
+            ]
+        }
+    ],
+    "volumes": [],
+    "networkMode": "awsvpc",
+    "memory": "512",
+    "cpu": "256",
+    "executionRoleArn": "arn:aws:iam::440374182634:role/ecsTaskExecutionRole",
+    "family": "ECS-NCTU-BBS",
+    "taskRoleArn": "arn:aws:iam::440374182634:role/NCTU_BBS_Fargate_Role",
+    "placementConstraints": []
+}
+
