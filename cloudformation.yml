@@ -29,7 +29,7 @@ Resources:
             Cluster: NCTU-BBS-Cluster
             LaunchType: FARGATE
             ServiceName: NCTU-BBS-Service
-            DesiredCount: 1
+            DesiredCount: 0
             TaskDefinition: ECS-NCTU-BBS
             NetworkConfiguration:
                 AwsvpcConfiguration:
@@ -49,3 +49,11 @@ Resources:
         Type: AWS::Cognito::UserPool
         Properties:
             UserPoolName: nctu-bbs-user-pool
+            Policies:
+                PasswordPolicy:
+                    MinimumLength: 8
+                    RequireLowercase: false
+                    RequireNumbers: false
+                    RequireSymbols: false
+                    RequireUppercase: false
+                    TemporaryPasswordValidityDays: 365
