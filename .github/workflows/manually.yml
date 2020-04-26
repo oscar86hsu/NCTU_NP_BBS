@@ -24,8 +24,8 @@
 #    and best practices on handling the access key credentials.
 
 on:
-    watch:
-      types: [started]
+  watch:
+    types: [started]
   
   
   name: Deploy to Amazon ECS
