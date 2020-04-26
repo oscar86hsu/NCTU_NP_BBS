@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Initialize Resources for NCTU BBS'
+Resources:
+    ContainerRepository:
+        Type: AWS::ECR::Repository
+        Properties: 
+            RepositoryName: nctu-np-bbs
+
+    FargateCluster:
+        Type: AWS::ECS::Cluster
+        Properties: 
+            ClusterName: NCTU-BBS-Cluster
+
+    S3Bucket:
+        Type: AWS::S3::Bucket
+        Properties:
+            BucketName: oscarhsu-nctu-bbs
+
+    CognitoUserPool:
+        Type: AWS::Cognito::UserPool
+        Properties:
+            UserPoolName: nctu-bbs-user-pool
