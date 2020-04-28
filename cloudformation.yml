@@ -23,23 +23,6 @@ Resources:
         Properties: 
             ClusterName: NCTU-BBS-Cluster
 
-    FargateService:
-        Type: AWS::ECS::Service
-        Properties: 
-            Cluster: NCTU-BBS-Cluster
-            LaunchType: FARGATE
-            ServiceName: NCTU-BBS-Service
-            DesiredCount: 0
-            TaskDefinition: ECS-NCTU-BBS
-            NetworkConfiguration:
-                AwsvpcConfiguration:
-                    AssignPublicIp: ENABLED
-                    SecurityGroups: 
-                      - !Ref SecurityGroup
-                    Subnets: 
-                      - subnet-3b86d642
-                      - subnet-60bf134b
-
     S3Bucket:
         Type: AWS::S3::Bucket
         Properties:
