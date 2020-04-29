@@ -3,38 +3,11 @@ import socket
 import sys
 import threading
 import logging
+from auth import Client, UserPool
 from db import Database
 
 class Exit(Exception):
     pass
-
-class Connection:
-    def __init__(self, conn, addr):
-        super().__init__()
-        self.is_login = False
-        self.username = None
-        self.uid = -1
-        self.conn = conn
-        self.addr = addr
-
-    def set_login_stat(self, value):
-        self.is_login = value
-
-    def set_username(self, value):
-        self.username = value
-
-    def set_userid(self, value):
-        self.uid = value
-
-    def get_login_stat(self):
-        return self.is_login
-
-    def get_username(self):
-        return self.username
-
-    def get_userid(self):
-        return self.uid
-
 
 class BBS_Server:
     def __init__(self, host, port, dbname = "bbs.db"):
@@ -58,7 +31,7 @@ class BBS_Server:
         while True:
             try:
                 conn, addr = self.sock.accept()
-                client = Connection(conn, addr)
+                client = Client(conn, addr)
                 t = threading.Thread(target=self.connection_handler, args=(client,), daemon=True)
                 t.start()
             except KeyboardInterrupt:
@@ -137,15 +110,15 @@ class BBS_Server:
             message = "Usage: register <username> <email> <password>\n"
             client.conn.sendall(message.encode())
             return
-
-        db = Database(self.dbname)
-        uid, username, password = db.get_user(client_message[0])
-        if  username != None:
+            
+        user_pool = UserPool()
+        try:
+            user_pool.create_user(client_message[0], client_message[1], client_message[2])
+        except user_pool.client.exceptions.UsernameExistsException:
             message = "Username is already used.\n"
             client.conn.sendall(message.encode())
             return
 
-        db.create_user(client_message[0], client_message[1], client_message[2])
         message = "Register successfully.\n"
         client.conn.sendall(message.encode())
         return
@@ -161,11 +134,15 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        db = Database(self.dbname)
-        uid, username, password = db.get_user(client_message[0])
-
-        if (username == None) or (password != client_message[1]):
+        user_pool = UserPool()
+        try:
+            user_pool.login(client_message[0], client_message[1])
+        except user_pool.client.exceptions.NotAuthorizedException:
             logging.warning("{} login failed!".format(client_message[0]))
+            message = "Login failed.\n"
+            client.conn.sendall(message.encode())
+            return
+        except user_pool.client.exceptions.UserNotFoundException:
             message = "Login failed.\n"
             client.conn.sendall(message.encode())
             return
@@ -175,7 +152,6 @@ class BBS_Server:
         client.conn.sendall(message.encode())
         client.set_login_stat(True)
         client.set_username(client_message[0])
-        client.set_userid(uid)
         return
         
     def logout(self, client, client_message):
@@ -207,7 +183,7 @@ class BBS_Server:
             client.conn.sendall(message.encode())
             return
 
-        message = client.username + "\n"
+        message = client.get_username() + "\n"
         client.conn.sendall(message.encode())
         return
 

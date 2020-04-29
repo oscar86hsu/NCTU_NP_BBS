@@ -7,6 +7,7 @@ import threading
 import logging
 import server
 from db import Database
+from auth import Client, UserPool
 from datetime import date
 
 fileList = glob.glob('*.db')
@@ -24,21 +25,19 @@ for filePath in fileList:
 #                     datefmt='%Y-%m-%d %H:%M:%S')
 
 HOST = "127.0.0.1"
+os.system('docker build -t nctubbs /home/oscarhsu/NCTU_NP_BBS')
 
 
 class ConnectionTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         PORT = 6000
-        test_server = server.BBS_Server(HOST, PORT, "test_connection.db")
-        t = threading.Thread(
-            target=test_server.start_listening, args=(), daemon=True)
-        t.start()
-        time.sleep(0.1)
+        os.system('docker rm --force nctubbs_connection_test')
+        os.system('docker run -d --name nctubbs_connection_test -p ' + str(PORT) + ':3000 -v ~/.aws:/root/.aws nctubbs')
 
     @classmethod
     def tearDownClass(cls):
-        os.remove("test_connection.db")
+        os.system('docker rm --force nctubbs_connection_test')
 
     def connect(self):
         PORT = 6000
@@ -68,19 +67,21 @@ class ConnectionTest(unittest.TestCase):
 class LoginTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        dbname = "test_login.db"
         PORT = 6001
-        test_server = server.BBS_Server(HOST, PORT, dbname)
-        t = threading.Thread(
-            target=test_server.start_listening, args=(), daemon=True)
-        t.start()
-        time.sleep(0.1)
-        db = Database(dbname)
-        db.create_user('exist_user', 'exist_email', 'exist_password')
+        os.system('docker rm --force nctubbs_login_test')
+        os.system('docker run -d --name nctubbs_login_test -p ' + str(PORT) + ':3000 -v ~/.aws:/root/.aws nctubbs')
+        user_pool = UserPool()
+        try:
+            user_pool.create_user('exist_user', 'exist_email@email.com', 'exist_password')
+        except user_pool.client.exceptions.UsernameExistsException:
+            pass
 
     @classmethod
     def tearDownClass(cls):
-        os.remove("test_login.db")
+        os.system('docker rm --force nctubbs_login_test')
+        user_pool = UserPool()
+        user_pool.delete_user('exist_user')
+        user_pool.delete_user('new_user')
 
     def connect(self):
         PORT = 6001
@@ -102,7 +103,7 @@ class LoginTest(unittest.TestCase):
 
     def test_register_fail_user_exist(self):
         s = self.connect()
-        s.send("register exist_user exist_email exist_password\r\n".encode())
+        s.send("register exist_user exist_email@email.com exist_password\r\n".encode())
         time.sleep(0.1)
         raw_message = s.recv(1024)
         self.assertIn(b'Username is already used.\n', raw_message)
@@ -112,7 +113,7 @@ class LoginTest(unittest.TestCase):
 
     def test_register_success(self):
         s = self.connect()
-        s.send("register new_user new_email new_password\r\n".encode())
+        s.send("register new_user new_email@email.com new_password\r\n".encode())
         time.sleep(0.1)
         raw_message = s.recv(1024)
         self.assertIn(b'Register successfully.\n', raw_message, )
