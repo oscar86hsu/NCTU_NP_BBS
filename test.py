@@ -114,7 +114,7 @@ class LoginTest(unittest.TestCase):
     def test_register_success(self):
         s = self.connect()
         s.send("register new_user new_email@email.com new_password\r\n".encode())
-        time.sleep(0.1)
+        time.sleep(0.5)
         raw_message = s.recv(1024)
         self.assertIn(b'Register successfully.\n', raw_message, )
         s.send("exit\r\n".encode())
@@ -144,7 +144,7 @@ class LoginTest(unittest.TestCase):
     def test_login_fail_not_logout(self):
         s = self.connect()
         s.send("login exist_user exist_password\r\n".encode())
-        time.sleep(0.1)
+        time.sleep(0.5)
         raw_message = s.recv(1024)
         self.assertIn(b'Welcome, exist_user.\n', raw_message)
         s.send("login exist_user exist_password\r\n".encode())

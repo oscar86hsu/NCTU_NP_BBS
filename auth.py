@@ -62,10 +62,13 @@ class UserPool:
         )
 
     def delete_user(self, username):
-        self.client.admin_delete_user(
-            UserPoolId=USER_POOL_ID,
-            Username=username
-        )
+        try:
+            self.client.admin_delete_user(
+                UserPoolId=USER_POOL_ID,
+                Username=username
+            )
+        except self.client.exceptions.UserNotFoundException:
+            pass
 
     def login(self, username, password):
         response = self.client.admin_initiate_auth(
