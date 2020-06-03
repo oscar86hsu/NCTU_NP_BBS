@@ -1,4 +1,6 @@
 # NCTU_NP_BBS
+Archived and move to [NCTU_NP_BBS_Serverless](https://github.com/oscar86hsu/NCTU_NP_BBS_Serverless)
+<br>
 Bulletin Board System (BBS).
 <br>
 The program handles multiple connections and receives user command from standard input.

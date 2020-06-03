@@ -48,25 +48,6 @@ class Database:
         self.cur.execute(sql)
         self.conn.commit()
 
-    ### LOGIN ###
-    def get_user(self, username):
-        sql = "SELECT UID, password FROM user WHERE username='{}'".format(username)
-        result = self.execute(sql).fetchone()
-        if result == None:
-            return None, None, None
-        else:
-            return result[0], username, result[1]
-
-    def create_user(self, username, email, password):
-        sql = "INSERT INTO user(username, email, password) VALUES('{}', '{}', '{}')".format(username, email, password)
-        self.execute(sql)
-        logging.info("User {} created.".format(username))
-
-    def delete_user(self, username):
-        sql = "DELETE FROM user WHERE username='{}'".format(username)
-        self.execute(sql)
-        logging.info("User {} deleted.".format(username))
-
     ### POST ###
     def create_board(self, name, moderator):
         sql = "INSERT INTO board(name, moderator) VALUES('{}', '{}')".format(name, moderator)
